@@ -4,5 +4,3 @@ numpy
 matplotlib
 plotly
 dash-bootstrap-components
-typing
-functools
