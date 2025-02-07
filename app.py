@@ -1,7 +1,8 @@
 from dash import Dash, dcc, html
+from dash.dependencies import Output, Input
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt  # Remove if you do not actually use it
+import matplotlib.pyplot as plt  # Remove this import if you are not using matplotlib
 
 # Load and filter the data
 df = pd.read_csv("mo_salah.csv")
@@ -41,9 +42,7 @@ app.layout = html.Div([
     dcc.Graph(id='assists-distribution')
 ])
 
-# Define the callback with proper Output and Input wrappers (using only one callback decorator)
-from dash.dependencies import Output, Input
-
+# Define the callback with proper Output and Input wrappers
 @app.callback(
     [Output('slider-output', 'children'),
      Output('goals-distribution', 'figure'),
@@ -94,6 +93,7 @@ def update_output(num_games):
     
     return summary_text, goals_fig, assists_fig
 
-# Run the Dash server
+# Run the Dash server with proper host binding (for deployment, e.g., on Render)
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    # Bind to 0.0.0.0 so that Render can detect the open port and assign the correct port.
+    app.run_server(debug=True, host="0.0.0.0", port=10000)
