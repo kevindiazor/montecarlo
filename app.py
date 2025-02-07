@@ -7,6 +7,16 @@ from functools import lru_cache
 from typing import Tuple
 
 # ---------------------------
+# Liverpool FC Official Colors
+# ---------------------------
+class LFCColors:
+    PRIMARY_RED = "#C8102E"  # Official primary red [1][4]
+    SECONDARY_GREEN = "#00B2A9"  # Official accent green [1]
+    GOLD_ACCENT = "#F6EB61"  # Official gold accent [1]
+    WHITE = "#FFFFFF"  # Standard white [2][5]
+    DARK_RED = "#5E1208"  # Dark red from logo [3]
+
+# ---------------------------
 # Configuration Constants
 # ---------------------------
 class Config:
@@ -14,8 +24,6 @@ class Config:
     NUM_SIMULATIONS = int(os.environ.get('NUM_SIMULATIONS', 10_000))
     DEFAULT_GAMES = int(os.environ.get('DEFAULT_GAMES', 38))
     CACHE_SIZE = 128
-    LIVERPOOL_RED = "#C8102E"
-    LIVERPOOL_SECONDARY = "#00B2A9"
     SALAH_IMAGE = "assets/salah_image.jpg"
 
 # ---------------------------
@@ -56,9 +64,11 @@ slider = dcc.Slider(
     max=38,
     step=1,
     value=Config.DEFAULT_GAMES,
-    marks={i: {'label': str(i), 'style': {'transform': 'rotate(45deg)'}} 
+    marks={i: {'label': str(i), 'style': {'color': LFCColors.DARK_RED}} 
            for i in range(10, 39, 2)},
-    tooltip={"placement": "bottom", "always_visible": True}
+    tooltip={"placement": "bottom", "always_visible": True},
+    updatemode='drag',
+    className='lfc-slider'
 )
 
 def create_distribution_figure(data: np.ndarray, title: str, color: str) -> dict:
@@ -71,21 +81,23 @@ def create_distribution_figure(data: np.ndarray, title: str, color: str) -> dict
             'type': 'histogram',
             'name': 'Count',
             'marker': {'color': color},
-            'opacity': 0.7,
+            'opacity': 0.85,
             'histnorm': 'probability density',
             'hovertemplate': f'{title}: %{{x:.1f}}<extra></extra>'
         }],
         'layout': {
             'title': f'<b>{title}</b> Distribution<br>μ={mean:.1f} σ={std:.1f} (90% CI: {p5}-{p95})',
-            'margin': {'t': 80, 'b': 40},
-            'xaxis': {'title': f'Total {title}'},
-            'yaxis': {'title': 'Probability Density'},
-            'plot_bgcolor': '#f8f9fa'
+            'margin': {'t': 80, 'b': 40, 'l': 40, 'r': 40},
+            'xaxis': {'title': f'Total {title}', 'gridcolor': LFCColors.WHITE},
+            'yaxis': {'title': 'Probability Density', 'gridcolor': LFCColors.WHITE},
+            'plot_bgcolor': LFCColors.WHITE,
+            'paper_bgcolor': LFCColors.WHITE,
+            'font': {'color': LFCColors.DARK_RED}
         }
     }
 
 # ---------------------------
-# App Layout with Image
+# App Layout with LFC Styling
 # ---------------------------
 app.layout = dbc.Container([
     dcc.Store(id='simulation-cache'),
@@ -94,9 +106,10 @@ app.layout = dbc.Container([
         html.Div([
             html.H1("Mohamed Salah Performance Predictor", 
                    className="display-4",
-                   style={'color': Config.LIVERPOOL_RED}),
+                   style={'color': LFCColors.PRIMARY_RED}),
             html.P("Premier League 2023-24 Season Projections", 
-                  className="lead text-muted")
+                  className="lead",
+                  style={'color': LFCColors.SECONDARY_GREEN})
         ], className="text-center my-5")
     )),
     
@@ -108,9 +121,9 @@ app.layout = dbc.Container([
                     style={
                         'width': '100%',
                         'maxWidth': '600px',
-                        'border': f'4px solid {Config.LIVERPOOL_RED}',
+                        'border': f'4px solid {LFCColors.PRIMARY_RED}',
                         'borderRadius': '15px',
-                        'boxShadow': '0 8px 16px rgba(0,0,0,0.2)',
+                        'boxShadow': f'0 8px 16px {LFCColors.SECONDARY_GREEN}33',
                         'margin': '20px auto',
                         'display': 'block',
                         'position': 'relative',
@@ -128,17 +141,19 @@ app.layout = dbc.Container([
         html.Div([
             html.Label("Remaining Games to Simulate:", 
                       className="h5",
-                      style={'color': Config.LIVERPOOL_SECONDARY}),
+                      style={'color': LFCColors.DARK_RED}),
             slider
-        ], className="mb-4 p-3 border rounded")
+        ], className="mb-4 p-3 border rounded",
+           style={'borderColor': LFCColors.SECONDARY_GREEN})
     ])),
     
     dbc.Row(dbc.Col(
         dcc.Loading(
             html.Div(id='slider-output', 
                     className="h4 text-center mb-4",
-                    style={'color': Config.LIVERPOOL_RED}),
-            type="circle"
+                    style={'color': LFCColors.PRIMARY_RED}),
+            type="circle",
+            color=LFCColors.PRIMARY_RED
         )
     )),
     
@@ -146,7 +161,7 @@ app.layout = dbc.Container([
         dbc.Col(dcc.Graph(id='goals-distribution'), className="mb-4", xs=12, md=6),
         dbc.Col(dcc.Graph(id='assists-distribution'), className="mb-4", xs=12, md=6)
     ])
-], fluid=True, className="py-3")
+], fluid=True, style={'backgroundColor': LFCColors.WHITE})
 
 # ---------------------------
 # Callback Implementation
@@ -168,8 +183,8 @@ def update_components(num_games: int) -> Tuple[str, dict, dict]:
         f"Projection for {num_games} games: "
         f"{goals_data.mean():.1f}±{goals_data.std():.1f} goals | "
         f"{assists_data.mean():.1f}±{assists_data.std():.1f} assists",
-        create_distribution_figure(goals_data, 'Goals', Config.LIVERPOOL_RED),
-        create_distribution_figure(assists_data, 'Assists', Config.LIVERPOOL_SECONDARY)
+        create_distribution_figure(goals_data, 'Goals', LFCColors.PRIMARY_RED),
+        create_distribution_figure(assists_data, 'Assists', LFCColors.SECONDARY_GREEN)
     )
 
 # ---------------------------
