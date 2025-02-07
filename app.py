@@ -1,8 +1,9 @@
 from dash import Dash, dcc, html
 from dash.dependencies import Output, Input
+import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt  # Remove this import if you are not using matplotlib
+import os
 
 # Load and filter the data
 df = pd.read_csv("mo_salah.csv")
@@ -22,25 +23,50 @@ def monte_carlo_simulation(num_simulations, num_games):
     ])
     return simulated_goals, simulated_assists
 
-# Initialize the Dash app
-app = Dash(__name__)
+# Set up external stylesheets with Bootstrap and meta tags for mobile responsiveness
+external_stylesheets = [dbc.themes.BOOTSTRAP]
+meta_tags = [{
+    'name': 'viewport',
+    'content': 'width=device-width, initial-scale=1, shrink-to-fit=no'
+}]
 
-# Define the dashboard layout
-app.layout = html.Div([
-    html.H1("Mohamed Salah Season Predictor"),
-    html.P("Use the slider to select the number of games to simulate:"),
-    dcc.Slider(
-        id='num-games-slider',
-        min=10,
-        max=38,
-        step=1,
-        value=38,
-        marks={i: str(i) for i in range(10, 39)}
-    ),
-    html.Div(id='slider-output'),
-    dcc.Graph(id='goals-distribution'),
-    dcc.Graph(id='assists-distribution')
-])
+# Initialize the Dash app with the Bootstrap theme and meta tags
+app = Dash(__name__, external_stylesheets=external_stylesheets, meta_tags=meta_tags)
+
+# Define the responsive dashboard layout using Bootstrap components
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col(html.H1("Mohamed Salah Season Predictor"), width=12)
+    ], className="mb-3"),
+    
+    dbc.Row([
+        dbc.Col(html.P("Use the slider to select the number of games to simulate:"), width=12)
+    ], className="mb-3"),
+    
+    dbc.Row([
+        dbc.Col(
+            dcc.Slider(
+                id='num-games-slider',
+                min=10,
+                max=38,
+                step=1,
+                value=38,
+                marks={i: str(i) for i in range(10, 39)},
+                tooltip={"always_visible": True}
+            ),
+            width=12
+        )
+    ], className="mb-3"),
+    
+    dbc.Row([
+        dbc.Col(html.Div(id='slider-output'), width=12, className="mb-3")
+    ]),
+    
+    dbc.Row([
+        dbc.Col(dcc.Graph(id='goals-distribution'), xs=12, sm=12, md=6),
+        dbc.Col(dcc.Graph(id='assists-distribution'), xs=12, sm=12, md=6)
+    ], className="mb-3")
+], fluid=True)
 
 # Define the callback with proper Output and Input wrappers
 @app.callback(
@@ -60,28 +86,29 @@ def update_output(num_games):
     assists_5th = np.percentile(simulated_assists, 5)
     assists_95th = np.percentile(simulated_assists, 95)
 
+    # Create the goals histogram figure using dictionary layout with styled title
     goals_fig = {
-    'data': [{
-        'x': simulated_goals,
-        'type': 'histogram',
-        'marker': {'color': 'blue'},
-        'name': 'Goals'
-    }],
-    'layout': {
-        'title': {
-            'text': f'Goals Distribution (Mean: {goals_mean:.2f}, Range: {goals_5th}-{goals_95th})',
-            'font': {'size': 20, 'color': 'black'},
-            'x': 0.5,
-            'xanchor': 'center'
-        },
-        'xaxis': {'title': 'Total Goals per Season'},
-        'yaxis': {'title': 'Frequency'},
-        'paper_bgcolor': 'rgba(0,0,0,0)',
-        'plot_bgcolor': 'rgba(0,0,0,0)'
+        'data': [{
+            'x': simulated_goals,
+            'type': 'histogram',
+            'marker': {'color': 'blue'},
+            'name': 'Goals'
+        }],
+        'layout': {
+            'title': {
+                'text': f'Goals Distribution (Mean: {goals_mean:.2f}, Range: {goals_5th}-{goals_95th})',
+                'font': {'size': 20, 'color': 'black'},
+                'x': 0.5,
+                'xanchor': 'center'
+            },
+            'xaxis': {'title': 'Total Goals per Season'},
+            'yaxis': {'title': 'Frequency'},
+            'paper_bgcolor': 'rgba(0,0,0,0)',
+            'plot_bgcolor': 'rgba(0,0,0,0)'
+        }
     }
-}
 
-
+    # Create the assists histogram figure with similar styling
     assists_fig = {
         'data': [{
             'x': simulated_assists,
@@ -90,9 +117,16 @@ def update_output(num_games):
             'name': 'Assists'
         }],
         'layout': {
-            'title': f'Assists Distribution (Mean: {assists_mean:.2f}, Range: {assists_5th}-{assists_95th})',
+            'title': {
+                'text': f'Assists Distribution (Mean: {assists_mean:.2f}, Range: {assists_5th}-{assists_95th})',
+                'font': {'size': 20, 'color': 'black'},
+                'x': 0.5,
+                'xanchor': 'center'
+            },
             'xaxis': {'title': 'Total Assists per Season'},
-            'yaxis': {'title': 'Frequency'}
+            'yaxis': {'title': 'Frequency'},
+            'paper_bgcolor': 'rgba(0,0,0,0)',
+            'plot_bgcolor': 'rgba(0,0,0,0)'
         }
     }
     
@@ -101,7 +135,7 @@ def update_output(num_games):
     
     return summary_text, goals_fig, assists_fig
 
-# Run the Dash server with proper host binding (for deployment, e.g., on Render)
+# Run the Dash server with proper host binding and port
 if __name__ == '__main__':
-    # Bind to 0.0.0.0 so that Render can detect the open port and assign the correct port.
-    app.run_server(debug=True, host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run_server(debug=True, host="0.0.0.0", port=port)
