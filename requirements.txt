@@ -4,3 +4,5 @@ numpy
 matplotlib
 plotly
 dash-bootstrap-components
+flask-compress==1.13  # Explicit version from successful deployments [4][38]
+brotli==1.1.0  # Required compression library [2][10]
