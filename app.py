@@ -99,6 +99,13 @@ app.layout = dbc.Container([
             )
         )
     ),
+    # New row for Salah image
+    dbc.Row(
+        dbc.Col(
+            html.Img(src=app.get_asset_url("salah_image.jpg"),
+                     style={"width": "300px", "display": "block", "margin": "0 auto"})
+        )
+    ),
     dbc.Row(dbc.Col(color_mode_switch)),
     dbc.Row(
         dbc.Col([
