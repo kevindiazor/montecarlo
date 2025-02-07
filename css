@@ -1,0 +1,24 @@
+/* Custom styles for graph titles */
+.gtitle {
+    /* Default font size for larger screens */
+    font-size: 20px;
+}
+
+/* Media queries to adjust title size on smaller screens */
+@media (max-width: 768px) {
+    .gtitle {
+        font-size: 16px;
+    }
+}
+@media (max-width: 480px) {
+    .gtitle {
+        font-size: 14px;
+    }
+}
+
+/* Optional: Additional responsive styling for the slider if needed */
+@media (max-width: 480px) {
+    .rc-slider {
+        margin: 0 10px;
+    }
+}
