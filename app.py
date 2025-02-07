@@ -149,3 +149,13 @@ def handle_error(e: Exception) -> tuple:
         FigureFactory.create_figure((), 'Assists', LFCColors.SECONDARY_GREEN),
         error_msg
     )
+
+# ---------------------------
+# Server Configuration
+# ---------------------------
+if __name__ == '__main__':
+    app.run_server(
+        host=os.environ.get('HOST', '0.0.0.0'),
+        port=int(os.environ.get('PORT', 8050)),
+        debug=os.environ.get('DEBUG', 'false').lower() == 'true'
+    )
