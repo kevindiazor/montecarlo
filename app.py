@@ -61,18 +61,26 @@ def update_output(num_games):
     assists_95th = np.percentile(simulated_assists, 95)
 
     goals_fig = {
-        'data': [{
-            'x': simulated_goals,
-            'type': 'histogram',
-            'marker': {'color': 'blue'},
-            'name': 'Goals'
-        }],
-        'layout': {
-            'title': f'Goals Distribution (Mean: {goals_mean:.2f}, Range: {goals_5th}-{goals_95th})',
-            'xaxis': {'title': 'Total Goals per Season'},
-            'yaxis': {'title': 'Frequency'}
-        }
+    'data': [{
+        'x': simulated_goals,
+        'type': 'histogram',
+        'marker': {'color': 'blue'},
+        'name': 'Goals'
+    }],
+    'layout': {
+        'title': {
+            'text': f'Goals Distribution (Mean: {goals_mean:.2f}, Range: {goals_5th}-{goals_95th})',
+            'font': {'size': 20, 'color': 'black'},
+            'x': 0.5,
+            'xanchor': 'center'
+        },
+        'xaxis': {'title': 'Total Goals per Season'},
+        'yaxis': {'title': 'Frequency'},
+        'paper_bgcolor': 'rgba(0,0,0,0)',
+        'plot_bgcolor': 'rgba(0,0,0,0)'
     }
+}
+
 
     assists_fig = {
         'data': [{
