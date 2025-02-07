@@ -24,7 +24,7 @@ rng = np.random.default_rng()
 # Monte Carlo Simulation Function
 # ---------------------------
 def monte_carlo_simulation(num_games: int) -> tuple[np.ndarray, np.ndarray]:
-    """Vectorized simulation for goals and assists."""
+    """Vectorized Monte Carlo simulation for goals and assists."""
     size = (NUM_SIMULATIONS, num_games)
     goals_sim = rng.choice(goals, size=size).sum(axis=1)
     assists_sim = rng.choice(assists, size=size).sum(axis=1)
@@ -37,7 +37,7 @@ external_stylesheets = [dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME]
 app = Dash(__name__, external_stylesheets=external_stylesheets,
            meta_tags=[{"viewport": "width=device-width, initial-scale=1, shrink-to-fit=no"}])
 
-# Define light/dark mode switch component
+# Light/Dark mode switch component
 color_mode_switch = html.Span(
     [
         dbc.Label(className="fa fa-moon", html_for="theme-switch"),
@@ -53,7 +53,7 @@ color_mode_switch = html.Span(
 )
 
 # ---------------------------
-# Dashboard Layout
+# Dashboard Layout Components
 # ---------------------------
 slider = dcc.Slider(
     id='num-games-slider',
@@ -66,6 +66,7 @@ slider = dcc.Slider(
 )
 
 def create_histogram(data: np.ndarray, color: str, title: str) -> dict:
+    """Generate consistent histogram configuration."""
     mean = data.mean()
     p5, p95 = np.percentile(data, [5, 95])
     return {
@@ -89,13 +90,25 @@ def create_histogram(data: np.ndarray, color: str, title: str) -> dict:
     }
 
 app.layout = dbc.Container([
-    dbc.Row(dbc.Col(html.H1("Mohamed Salah Season Predictor", className="text-center my-4"))),
+    dbc.Row(
+        dbc.Col(
+            html.H1(
+                "Mohamed Salah Season Predictor",
+                className="text-center my-4",
+                style={'color': '#C8102E'}  # Liverpool red for the title
+            )
+        )
+    ),
     dbc.Row(dbc.Col(color_mode_switch)),
-    dbc.Row(dbc.Col([
-        html.P("Select remaining games to simulate:", className="lead"),
-        slider
-    ], className="mb-4")),
-    dbc.Row(dbc.Col(html.Div(id='slider-output', className="h5 text-center mb-4"))),
+    dbc.Row(
+        dbc.Col([
+            html.P("Select remaining games to simulate:", className="lead"),
+            slider
+        ], className="mb-4")
+    ),
+    dbc.Row(
+        dbc.Col(html.Div(id='slider-output', className="h5 text-center mb-4"))
+    ),
     dbc.Row([
         dbc.Col(dcc.Graph(id='goals-distribution'), xs=12, md=6),
         dbc.Col(dcc.Graph(id='assists-distribution'), xs=12, md=6)
@@ -114,16 +127,18 @@ app.layout = dbc.Container([
 def update_output(num_games: int):
     goals_data, assists_data = monte_carlo_simulation(num_games)
     
-    # Generate histogram figures
-    goals_fig = create_histogram(goals_data, '#1f77b4', 'Goals')
-    assists_fig = create_histogram(assists_data, '#2ca02c', 'Assists')
+    # Use Liverpool FC colors:
+    # Goals histogram in Liverpool red (#C8102E)
+    # Assists histogram in Liverpool green (#00B2A9)
+    goals_fig = create_histogram(goals_data, '#C8102E', 'Goals')
+    assists_fig = create_histogram(assists_data, '#00B2A9', 'Assists')
     
-    # Calculate additional descriptive statistics for goals
+    # Calculate descriptive statistics for goals
     goals_mean = goals_data.mean()
     goals_5th = np.percentile(goals_data, 5)
     goals_95th = np.percentile(goals_data, 95)
     
-    # New summary text as requested
+    # Updated summary text including requested details
     summary_text = (
         f"Simulating {num_games} games per season, our model predicts Salah would score between "
         f"{goals_5th} and {goals_95th} goals, on average around {goals_mean:.2f} goals."
