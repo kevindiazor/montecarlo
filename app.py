@@ -1,4 +1,4 @@
-from dash import Dash, dcc, html, Input, Output, callback
+from dash import Dash, dcc, html, Input, Output, callback, no_update
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
@@ -10,53 +10,70 @@ from typing import Tuple
 # Liverpool FC Official Colors
 # ---------------------------
 class LFCColors:
-    PRIMARY_RED = "#C8102E"  # Official primary red [1][4]
-    SECONDARY_GREEN = "#00B2A9"  # Official accent green [1]
-    GOLD_ACCENT = "#F6EB61"  # Official gold accent [1]
-    WHITE = "#FFFFFF"  # Standard white [2][5]
-    DARK_RED = "#5E1208"  # Dark red from logo [3]
+    PRIMARY_RED = "#C8102E"
+    SECONDARY_GREEN = "#00B2A9"
+    WHITE = "#FFFFFF"
+    DARK_RED = "#5E1208"
 
 # ---------------------------
 # Configuration Constants
 # ---------------------------
 class Config:
     SEASON_FILTER = os.environ.get('SEASON_FILTER', '2023-24')
-    NUM_SIMULATIONS = int(os.environ.get('NUM_SIMULATIONS', 10_000))
+    NUM_SIMULATIONS = int(os.environ.get('NUM_SIMULATIONS', 1000))  # Reduced for testing
     DEFAULT_GAMES = int(os.environ.get('DEFAULT_GAMES', 38))
     CACHE_SIZE = 128
     SALAH_IMAGE = "assets/salah_image.jpg"
 
 # ---------------------------
-# Data Loading with Memoization
+# Data Loading with Validation
 # ---------------------------
 @lru_cache(maxsize=1)
 def load_data() -> Tuple[np.ndarray, np.ndarray]:
+    """Load data with absolute path and validation"""
+    base_dir = os.path.dirname(__file__)
+    csv_path = os.path.join(base_dir, 'mo_salah.csv')
+    
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSV file not found at: {csv_path}")
+
     df = (
-        pd.read_csv("mo_salah.csv", usecols=['SEASON', 'G', 'A'])
+        pd.read_csv(csv_path, usecols=['SEASON', 'G', 'A'])
         .query("SEASON == @Config.SEASON_FILTER")
         .astype({'G': 'uint8', 'A': 'uint8'})
     )
+    
+    if df.empty:
+        raise ValueError("No data found for the specified season filter")
+        
     return df['G'].values, df['A'].values
 
 # ---------------------------
-# Vectorized Simulation with Caching
+# Simulation with Error Handling
 # ---------------------------
 @lru_cache(maxsize=Config.CACHE_SIZE)
 def monte_carlo_simulation(num_games: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Run simulation with input validation"""
+    if num_games < 1 or num_games > 38:
+        raise ValueError("Number of games must be between 1 and 38")
+    
     goals, assists = load_data()
     rng = np.random.default_rng()
     
-    goals_sim = rng.choice(goals, (Config.NUM_SIMULATIONS, num_games)).sum(axis=1)
-    assists_sim = rng.choice(assists, (Config.NUM_SIMULATIONS, num_games)).sum(axis=1)
+    try:
+        goals_sim = rng.choice(goals, (Config.NUM_SIMULATIONS, num_games)).sum(axis=1)
+        assists_sim = rng.choice(assists, (Config.NUM_SIMULATIONS, num_games)).sum(axis=1)
+    except Exception as e:
+        raise RuntimeError(f"Simulation failed: {str(e)}")
+        
     return goals_sim, assists_sim
 
 # ---------------------------
-# Dashboard Components
+# Dashboard Setup
 # ---------------------------
-app = Dash(__name__, 
+app = Dash(__name__,
            external_stylesheets=[dbc.themes.BOOTSTRAP],
-           meta_tags=[{"viewport": "width=device-width, initial-scale=1"}],
-           compress=True)
+           meta_tags=[{"viewport": "width=device-width, initial-scale=1"}])
 
 slider = dcc.Slider(
     id='num-games-slider',
@@ -66,12 +83,26 @@ slider = dcc.Slider(
     value=Config.DEFAULT_GAMES,
     marks={i: {'label': str(i), 'style': {'color': LFCColors.DARK_RED}} 
            for i in range(10, 39, 2)},
-    tooltip={"placement": "bottom", "always_visible": True},
-    updatemode='drag',
-    className='lfc-slider'
+    tooltip={"placement": "bottom", "always_visible": True}
 )
 
 def create_distribution_figure(data: np.ndarray, title: str, color: str) -> dict:
+    """Create figure with empty data handling"""
+    if data.size == 0:
+        return {
+            'data': [],
+            'layout': {
+                'title': f'No {title} Data Available',
+                'xaxis': {'visible': False},
+                'yaxis': {'visible': False},
+                'annotations': [{
+                    'text': 'Data Not Loaded',
+                    'showarrow': False,
+                    'font': {'size': 18, 'color': LFCColors.PRIMARY_RED}
+                }]
+            }
+        }
+    
     mean, std = data.mean(), data.std()
     p5, p95 = np.percentile(data, [5, 95])
     
@@ -97,10 +128,11 @@ def create_distribution_figure(data: np.ndarray, title: str, color: str) -> dict
     }
 
 # ---------------------------
-# App Layout with LFC Styling
+# App Layout with Debug Elements
 # ---------------------------
 app.layout = dbc.Container([
-    dcc.Store(id='simulation-cache'),
+    dcc.Store(id='debug-store'),
+    html.Div(id='hidden-error', style={'display': 'none'}),
     
     dbc.Row(dbc.Col(
         html.Div([
@@ -125,12 +157,10 @@ app.layout = dbc.Container([
                         'borderRadius': '15px',
                         'boxShadow': f'0 8px 16px {LFCColors.SECONDARY_GREEN}33',
                         'margin': '20px auto',
-                        'display': 'block',
-                        'position': 'relative',
-                        'clipPath': 'polygon(0 0, 100% 0, 100% 90%, 97% 100%, 3% 100%, 0 90%)'
+                        'display': 'block'
                     }
                 ),
-                className='position-relative text-center'
+                className='text-center'
             ),
             width=12,
             className='my-4'
@@ -164,28 +194,59 @@ app.layout = dbc.Container([
 ], fluid=True, style={'backgroundColor': LFCColors.WHITE})
 
 # ---------------------------
-# Callback Implementation
+# Enhanced Callback with Error Handling
 # ---------------------------
 @callback(
     [Output('slider-output', 'children'),
      Output('goals-distribution', 'figure'),
-     Output('assists-distribution', 'figure')],
-    Input('num-games-slider', 'value'),
-    prevent_initial_call=False
+     Output('assists-distribution', 'figure'),
+     Output('hidden-error', 'children')],
+    Input('num-games-slider', 'value')
 )
-def update_components(num_games: int) -> Tuple[str, dict, dict]:
-    if not 10 <= num_games <= 38:
-        raise ValueError("Number of games must be between 10 and 38")
-    
-    goals_data, assists_data = monte_carlo_simulation(num_games)
-    
-    return (
-        f"Projection for {num_games} games: "
-        f"{goals_data.mean():.1f}±{goals_data.std():.1f} goals | "
-        f"{assists_data.mean():.1f}±{assists_data.std():.1f} assists",
-        create_distribution_figure(goals_data, 'Goals', LFCColors.PRIMARY_RED),
-        create_distribution_figure(assists_data, 'Assists', LFCColors.SECONDARY_GREEN)
-    )
+def update_components(num_games: int):
+    """Main callback with comprehensive error handling"""
+    try:
+        if num_games is None:
+            return no_update, no_update, no_update, "No slider value received"
+            
+        goals_data, assists_data = monte_carlo_simulation(num_games)
+        
+        return (
+            f"Projection for {num_games} games: "
+            f"{goals_data.mean():.1f}±{goals_data.std():.1f} goals | "
+            f"{assists_data.mean():.1f}±{assists_data.std():.1f} assists",
+            create_distribution_figure(goals_data, 'Goals', LFCColors.PRIMARY_RED),
+            create_distribution_figure(assists_data, 'Assists', LFCColors.SECONDARY_GREEN),
+            ""
+        )
+        
+    except Exception as e:
+        error_msg = f"Error: {str(e)}"
+        return (
+            error_msg,
+            create_distribution_figure(np.array([]), 'Goals', LFCColors.PRIMARY_RED),
+            create_distribution_figure(np.array([]), 'Assists', LFCColors.SECONDARY_GREEN),
+            error_msg
+        )
+
+# ---------------------------
+# Debug Callback
+# ---------------------------
+@callback(
+    Output('debug-store', 'data'),
+    Input('num-games-slider', 'value')
+)
+def debug_callback(value):
+    """Log critical debugging information"""
+    try:
+        print(f"Slider value: {value}")
+        goals, assists = load_data()
+        print(f"Data loaded - Goals: {len(goals)}, Assists: {len(assists)}")
+        print(f"Sample goals: {goals[:5]}")
+        return None
+    except Exception as e:
+        print(f"Debug error: {str(e)}")
+        return None
 
 # ---------------------------
 # Server Configuration
@@ -194,6 +255,5 @@ if __name__ == '__main__':
     app.run_server(
         host=os.environ.get('HOST', '0.0.0.0'),
         port=int(os.environ.get('PORT', 8050)),
-        debug=os.environ.get('DEBUG', 'false').lower() == 'true',
-        dev_tools_props_check=False
+        debug=os.environ.get('DEBUG', 'false').lower() == 'true'
     )
