@@ -73,8 +73,9 @@ def create_histogram(data: np.ndarray, color: str, title: str) -> dict:
 # App Initialization and Light/Dark Toggle
 # ---------------------------
 external_stylesheets = [dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME]
-app = Dash(__name__, external_stylesheets=external_stylesheets,
-           meta_tags=[{"viewport": "width=device-width, initial-scale=1, shrink-to-fit": "yes"}])
+app = Dash(__name__,
+           external_stylesheets=external_stylesheets,
+           meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1, shrink-to-fit=yes"}])
 
 color_mode_switch = html.Span(
     [
